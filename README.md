@@ -48,15 +48,20 @@ Product requirements and roadmap: [`prd.md`](prd.md).
    uv run alembic upgrade head
    ```
 
-5. Create the test database once. Compose only creates `atlas_dev`:
+5. On a fresh volume, Compose creates both `atlas_dev` and `atlas_test`.
+   `atlas_dev` comes from `POSTGRES_DB`; `atlas_test` is created by
+   `docker/postgres/init/01-create-test-db.sh`.
+
+   Initialization scripts run only when the PostgreSQL data directory is
+   empty. For a volume created before this script existed, create the test
+   database manually:
 
    ```bash
    docker compose exec postgres \
      psql -U atlas -d postgres -c 'CREATE DATABASE atlas_test OWNER atlas;'
    ```
 
-   Skip this command if `atlas_test` already exists. It is separate from
-   `atlas_dev` on purpose.
+   `atlas_test` is separate from `atlas_dev` on purpose.
 
 ## Run
 
@@ -138,8 +143,8 @@ docker compose down -v
 ```
 
 This deletes the `atlas_postgres_data` volume, including `atlas_dev` and
-`atlas_test`. It cannot be undone. Recreate the test database and re-run
-migrations afterwards.
+`atlas_test`. It cannot be undone. On the next `docker compose up -d`, the
+init script recreates both databases; migrations must be applied again.
 
 ## Layout
 
@@ -150,6 +155,9 @@ src/atlas_ml_platform/
 ├── infrastructure/
 │   └── database/        # engine, sessions, ORM base/models
 └── config.py            # typed settings
+
+docker/
+└── postgres/init/       # local-only database bootstrap scripts
 
 migrations/              # Alembic environment and revisions
 tests/
