@@ -2,6 +2,7 @@ from fastapi import FastAPI
 
 from atlas_ml_platform.api.router import api_router
 from atlas_ml_platform.config import Settings, get_settings
+from atlas_ml_platform.core.errors import register_exception_handlers
 from atlas_ml_platform.core.lifespan import lifespan
 
 
@@ -18,6 +19,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     app.state.settings = settings
+
+    register_exception_handlers(app)
 
     app.include_router(api_router, prefix="/api/v1")
 

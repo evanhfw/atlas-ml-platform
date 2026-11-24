@@ -6,8 +6,13 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from atlas_ml_platform.infrastructure.database.session import get_db_session
+from atlas_ml_platform.modules.model_registry.presentation.routes import (
+    router as models_router,
+)
 
 api_router = APIRouter()
+
+api_router.include_router(models_router)
 
 SessionDep = Annotated[AsyncSession, Depends(get_db_session)]
 
