@@ -1,9 +1,11 @@
 import asyncio
-from uuid import UUID
+import hashlib
+from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from atlas_ml_platform.modules.artifacts.domain import Artifact
 from atlas_ml_platform.modules.model_registry.application.dto import (
     CreateModelCommand,
     CreateModelVersionCommand,
@@ -46,11 +48,34 @@ async def _create_model(
         )
 
 
+async def _register_artifact(
+    session_factory: async_sessionmaker[AsyncSession],
+    uri: str = "s3://bucket/model.joblib",
+) -> Artifact:
+    async with SQLAlchemyUnitOfWork(session_factory) as uow:
+        existing = await uow.artifacts.get_by_uri(uri)
+        if existing is not None:
+            return existing
+
+        artifact = Artifact.create(
+            id=uuid4(),
+            key=f"artifacts/{uuid4()}",
+            uri=uri,
+            checksum=hashlib.sha256(uri.encode()).hexdigest(),
+            size_bytes=128,
+            content_type="application/x-joblib",
+        )
+        await uow.artifacts.add(artifact)
+        await uow.commit()
+        return artifact
+
+
 async def _create_version(
     session_factory: async_sessionmaker[AsyncSession],
     model_id: UUID,
     artifact_uri: str = "s3://bucket/model.joblib",
 ) -> ModelVersion:
+    _ = await _register_artifact(session_factory, artifact_uri)
     async with SQLAlchemyUnitOfWork(session_factory) as uow:
         return await CreateModelVersion(uow).execute(
             CreateModelVersionCommand(
@@ -119,13 +144,14 @@ async def test_concurrent_version_creation(
     session_factory: async_sessionmaker[AsyncSession],
 ) -> None:
     model = await _create_model(session_factory)
+    artifact = await _register_artifact(session_factory)
 
     async def create() -> ModelVersion:
         async with SQLAlchemyUnitOfWork(session_factory) as uow:
             return await CreateModelVersion(uow).execute(
                 CreateModelVersionCommand(
                     model_id=model.id,
-                    artifact_uri="s3://bucket/model.joblib",
+                    artifact_uri=artifact.uri,
                 )
             )
 

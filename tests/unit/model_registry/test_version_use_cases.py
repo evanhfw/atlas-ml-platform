@@ -1,7 +1,12 @@
+import hashlib
 from uuid import UUID, uuid4
 
 import pytest
 
+from atlas_ml_platform.modules.artifacts.application.errors import (
+    ArtifactUriNotFound,
+)
+from atlas_ml_platform.modules.artifacts.domain import Artifact
 from atlas_ml_platform.modules.model_registry.application.dto import (
     CreateModelCommand,
     CreateModelVersionCommand,
@@ -42,11 +47,25 @@ async def _create_model(uow, name: str = "churn") -> Model:
     )
 
 
+async def _seed_artifact(uow, uri: str) -> Artifact:
+    artifact = Artifact.create(
+        id=uuid4(),
+        key=f"artifacts/{uuid4()}",
+        uri=uri,
+        checksum=hashlib.sha256(uri.encode()).hexdigest(),
+        size_bytes=128,
+        content_type="application/x-joblib",
+    )
+    await uow.artifacts.add(artifact)
+    return artifact
+
+
 async def _create_version(
     uow,
     model_id: UUID,
     artifact_uri: str = "s3://bucket/model.joblib",
 ) -> ModelVersion:
+    _ = await _seed_artifact(uow, artifact_uri)
     return await CreateModelVersion(uow).execute(
         CreateModelVersionCommand(
             model_id=model_id,
@@ -63,6 +82,7 @@ async def test_create_version_allocates_numbers(fake_uow) -> None:
 
     assert first.version_number == 1
     assert second.version_number == 2
+    assert first.artifact_uri == "s3://bucket/model.joblib"
     assert first.status is VersionStatus.DRAFT
     assert second.status is VersionStatus.DRAFT
 
@@ -72,6 +92,31 @@ async def test_create_version_requires_model(fake_uow) -> None:
         _ = await _create_version(fake_uow, uuid4())
 
     assert fake_uow.rolled_back is True
+
+
+async def test_create_version_requires_registered_artifact(fake_uow) -> None:
+    model = await _create_model(fake_uow)
+    unregistered = "s3://bucket/missing.joblib"
+
+    with pytest.raises(ArtifactUriNotFound) as error:
+        _ = await CreateModelVersion(fake_uow).execute(
+            CreateModelVersionCommand(
+                model_id=model.id,
+                artifact_uri=unregistered,
+            )
+        )
+
+    assert error.value.uri == unregistered
+    assert fake_uow.rolled_back is True
+    assert (
+        await fake_uow.versions.list_versions(
+            model_id=model.id,
+            limit=10,
+            offset=0,
+        )
+        == []
+    )
+    assert await fake_uow.versions.next_version_number(model.id) == 1
 
 
 async def test_get_version_is_scoped_to_model(fake_uow) -> None:

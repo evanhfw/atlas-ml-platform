@@ -8,6 +8,9 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from atlas_ml_platform.config import get_settings
 from atlas_ml_platform.infrastructure.database.base import Base
+from atlas_ml_platform.modules.artifacts.infrastructure import (  # noqa: F401
+    records as artifact_records,
+)
 from atlas_ml_platform.modules.model_registry.infrastructure import records  # noqa: F401
 
 # this is the Alembic Config object, which provides

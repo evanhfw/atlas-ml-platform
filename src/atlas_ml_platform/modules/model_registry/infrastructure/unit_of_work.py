@@ -3,6 +3,9 @@ from typing import Self, override
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from atlas_ml_platform.modules.artifacts.infrastructure.repository import (
+    SQLAlchemyArtifactRepository,
+)
 from atlas_ml_platform.modules.model_registry.application.ports import UnitOfWork
 from atlas_ml_platform.modules.model_registry.infrastructure.deployment_repository import (
     SQLAlchemyModelDeploymentRepository,
@@ -22,6 +25,7 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
         self._models: SQLAlchemyModelRepository | None = None
         self._versions: SQLAlchemyModelVersionRepository | None = None
         self._deployments: SQLAlchemyModelDeploymentRepository | None = None
+        self._artifacts: SQLAlchemyArtifactRepository | None = None
 
     @property
     @override
@@ -44,11 +48,18 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
             raise RuntimeError("UnitOfWork is not active")
         return self._deployments
 
+    @property
+    def artifacts(self) -> SQLAlchemyArtifactRepository:
+        if self._artifacts is None:
+            raise RuntimeError("UnitOfWork is not active")
+        return self._artifacts
+
     async def __aenter__(self) -> Self:
         self._session = self._session_factory()
         self._models = SQLAlchemyModelRepository(self._session)
         self._versions = SQLAlchemyModelVersionRepository(self._session)
         self._deployments = SQLAlchemyModelDeploymentRepository(self._session)
+        self._artifacts = SQLAlchemyArtifactRepository(self._session)
         return self
 
     async def __aexit__(
@@ -69,6 +80,7 @@ class SQLAlchemyUnitOfWork(UnitOfWork):
             self._models = None
             self._versions = None
             self._deployments = None
+            self._artifacts = None
 
     @override
     async def commit(self) -> None:

@@ -1,5 +1,8 @@
 from uuid import UUID
 
+from atlas_ml_platform.modules.artifacts.application.errors import (
+    ArtifactUriNotFound,
+)
 from atlas_ml_platform.modules.model_registry.application.dto import (
     CreateModelVersionCommand,
     ListModelVersionsQuery,
@@ -29,13 +32,18 @@ class CreateModelVersion:
             if await self._uow.models.get(command.model_id) is None:
                 raise ModelNotFound(command.model_id)
 
+            artifact_uri = command.artifact_uri.strip()
+            artifact = await self._uow.artifacts.get_by_uri(artifact_uri)
+            if artifact is None:
+                raise ArtifactUriNotFound(artifact_uri)
+
             version_number = await self._uow.versions.next_version_number(
                 command.model_id
             )
             version = ModelVersion.create(
                 model_id=command.model_id,
                 version_number=version_number,
-                artifact_uri=command.artifact_uri,
+                artifact_uri=artifact.uri,
             )
             await self._uow.versions.add(version)
             await self._uow.commit()

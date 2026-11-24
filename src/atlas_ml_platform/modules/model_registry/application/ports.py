@@ -1,6 +1,7 @@
 from typing import Protocol
 from uuid import UUID
 
+from atlas_ml_platform.modules.artifacts.application.ports import ArtifactRepository
 from atlas_ml_platform.modules.model_registry.domain import (
     Model,
     ModelName,
@@ -69,6 +70,9 @@ class UnitOfWork(Protocol):
 
     @property
     def deployments(self) -> ModelDeploymentRepository: ...
+
+    @property
+    def artifacts(self) -> ArtifactRepository: ...
 
     async def commit(self) -> None: ...
 

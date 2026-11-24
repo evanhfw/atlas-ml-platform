@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from atlas_ml_platform.modules.artifacts.domain import Artifact
+from atlas_ml_platform.modules.artifacts.presentation.schemas import ArtifactRead
 from atlas_ml_platform.modules.model_registry.domain import (
     Model,
     ModelVersion,
@@ -60,17 +62,23 @@ class ModelVersionRead(BaseModel):
     version_number: int
     status: VersionStatus
     artifact_uri: str
+    artifact: ArtifactRead | None = None
     created_at: datetime
     updated_at: datetime
 
     @classmethod
-    def from_domain(cls, version: ModelVersion) -> Self:
+    def from_domain(
+        cls,
+        version: ModelVersion,
+        artifact: Artifact | None = None,
+    ) -> Self:
         return cls(
             id=version.id,
             model_id=version.model_id,
             version_number=version.version_number,
             status=version.status,
             artifact_uri=version.artifact_uri,
+            artifact=ArtifactRead.from_domain(artifact) if artifact else None,
             created_at=version.created_at,
             updated_at=version.updated_at,
         )

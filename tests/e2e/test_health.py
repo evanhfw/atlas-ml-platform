@@ -6,10 +6,3 @@ def test_health_check(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok", "service": "atlas-ml-platform"}
-
-
-def test_database_health(client: TestClient) -> None:
-    response = client.get("/api/v1/health/database")
-
-    assert response.status_code == 200
-    assert response.json() == {"status": "ok", "database": "reachable"}

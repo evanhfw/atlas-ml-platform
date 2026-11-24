@@ -22,5 +22,9 @@ def test_database_url() -> str:
 @pytest.fixture
 def test_settings(test_database_url: str) -> Settings:
     return Settings(
-        _env_file=None, APP_ENV="testing", DEBUG=False, DATABASE_URL=test_database_url
+        _env_file=None,
+        APP_ENV="testing",
+        DEBUG=False,
+        DATABASE_URL=test_database_url,
+        S3_BUCKET="atlas-models-test",
     )

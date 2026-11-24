@@ -16,7 +16,9 @@ def clean_model_registry(test_database_url: str) -> Iterator[None]:
         try:
             async with engine.begin() as connection:
                 _ = await connection.execute(
-                    text("TRUNCATE TABLE model_deployments, model_versions, models")
+                    text(
+                        "TRUNCATE TABLE model_deployments, model_versions, models, artifacts"
+                    )
                 )
         finally:
             await engine.dispose()

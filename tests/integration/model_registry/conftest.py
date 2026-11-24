@@ -42,7 +42,9 @@ async def clean_model_registry(
     async def truncate() -> None:
         async with session_factory() as session:
             _ = await session.execute(
-                text("TRUNCATE TABLE model_deployments, model_versions, models")
+                text(
+                    "TRUNCATE TABLE model_deployments, model_versions, models, artifacts"
+                )
             )
             await session.commit()
 

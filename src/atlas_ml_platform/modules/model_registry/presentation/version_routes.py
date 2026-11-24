@@ -8,6 +8,7 @@ from atlas_ml_platform.modules.model_registry.application.dto import (
     CreateModelVersionCommand,
     ListModelVersionsQuery,
 )
+from atlas_ml_platform.modules.model_registry.application.ports import UnitOfWork
 from atlas_ml_platform.modules.model_registry.application.version_use_cases import (
     ActivateModelVersion,
     CreateModelVersion,
@@ -16,6 +17,7 @@ from atlas_ml_platform.modules.model_registry.application.version_use_cases impo
     ListModelVersions,
     MarkModelVersionReady,
 )
+from atlas_ml_platform.modules.model_registry.domain import ModelVersion
 from atlas_ml_platform.modules.model_registry.presentation.schemas import (
     ModelVersionCreate,
     ModelVersionList,
@@ -23,6 +25,14 @@ from atlas_ml_platform.modules.model_registry.presentation.schemas import (
 )
 
 router = APIRouter(prefix="/{model_id}/versions", tags=["versions"])
+
+
+async def _read_version(
+    uow: UnitOfWork,
+    version: ModelVersion,
+) -> ModelVersionRead:
+    artifact = await uow.artifacts.get_by_uri(version.artifact_uri)
+    return ModelVersionRead.from_domain(version, artifact)
 
 
 @router.post(
@@ -41,7 +51,7 @@ async def create_version(
             artifact_uri=payload.artifact_uri,
         )
     )
-    return ModelVersionRead.from_domain(version)
+    return await _read_version(uow, version)
 
 
 @router.get("", response_model=ModelVersionList)
@@ -56,8 +66,12 @@ async def list_versions(
         ListModelVersionsQuery(limit=limit, offset=offset),
     )
 
+    items: list[ModelVersionRead] = []
+    for version in versions:
+        items.append(await _read_version(uow, version))
+
     return ModelVersionList(
-        items=[ModelVersionRead.from_domain(version) for version in versions],
+        items=items,
         limit=limit,
         offset=offset,
     )
@@ -69,7 +83,7 @@ async def get_active_version(
     uow: UnitOfWorkDep,
 ) -> ModelVersionRead:
     version = await GetActiveModelVersion(uow).execute(model_id)
-    return ModelVersionRead.from_domain(version)
+    return await _read_version(uow, version)
 
 
 @router.get("/{version_id}", response_model=ModelVersionRead)
@@ -79,7 +93,7 @@ async def get_version(
     uow: UnitOfWorkDep,
 ) -> ModelVersionRead:
     version = await GetModelVersion(uow).execute(model_id, version_id)
-    return ModelVersionRead.from_domain(version)
+    return await _read_version(uow, version)
 
 
 @router.post("/{version_id}/ready", response_model=ModelVersionRead)
@@ -89,7 +103,7 @@ async def mark_version_ready(
     uow: UnitOfWorkDep,
 ) -> ModelVersionRead:
     version = await MarkModelVersionReady(uow).execute(model_id, version_id)
-    return ModelVersionRead.from_domain(version)
+    return await _read_version(uow, version)
 
 
 @router.post("/{version_id}/activate", response_model=ModelVersionRead)
@@ -99,4 +113,4 @@ async def activate_version(
     uow: UnitOfWorkDep,
 ) -> ModelVersionRead:
     version = await ActivateModelVersion(uow).execute(model_id, version_id)
-    return ModelVersionRead.from_domain(version)
+    return await _read_version(uow, version)

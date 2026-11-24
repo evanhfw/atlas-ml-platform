@@ -324,7 +324,7 @@ Suggested model metadata:
     checksum.
 -   **FR-035 (P2):** Support artifact retention and cleanup policies.
 
-Initial object storage target: MinIO for local development, with an
+Initial object storage target: SeaweedFS for local development, with an
 S3-compatible interface to support later migration to managed object
 storage.
 
@@ -512,7 +512,7 @@ Examples:
 Adapters may include:
 
 -   SQLAlchemy model repository.
--   MinIO/S3 artifact store.
+-   S3-compatible artifact store (SeaweedFS locally).
 -   scikit-learn runtime adapter.
 -   PyTorch runtime adapter.
 -   OpenTelemetry instrumentation adapter.
@@ -638,7 +638,7 @@ Planned options:
 -   scikit-learn for the first demonstrator model.
 -   PyTorch for a later deep-learning runtime.
 -   MLflow for experiment/model lifecycle integration if useful.
--   MinIO locally and S3-compatible storage in production.
+-   SeaweedFS locally and S3-compatible storage in production.
 -   Redis only when caching, coordination, or a measured use case
     requires it.
 
@@ -848,12 +848,12 @@ status codes should be finalized when each use case is implemented.
 
 ## 10.1 Health
 
--   `GET /api/v1/health/live` --- process liveness.
+-   `GET /api/v1/health` --- process liveness.
 -   `GET /api/v1/health/ready` --- readiness, including critical
     dependency checks.
--   During the early learning phase, a simple `GET /api/v1/health` and
-    `GET /api/v1/health/database` may be used before consolidating into
-    the final health contract.
+
+The early `/health/database` diagnostic endpoint has been removed;
+readiness now covers both PostgreSQL and S3 checks.
 
 Liveness should not fail merely because PostgreSQL is unavailable.
 Readiness should reflect whether the service can safely accept work.
@@ -918,7 +918,7 @@ Examples:
 
 -   SQLAlchemy repository against `atlas_test`.
 -   Alembic migrations against a fresh test database.
--   Object storage adapter against MinIO.
+-   Object storage adapter against SeaweedFS.
 -   API database dependency and transaction behavior.
 
 ## 11.3 API tests
@@ -1273,7 +1273,8 @@ Tasks: - Implement async engine factory. - Implement async session
 factory. - Add request-scoped session dependency. - Create engine and
 session factory in lifespan. - Dispose engine on shutdown. - Add
 database connectivity probe. - Add `/health/database` as an early
-diagnostic endpoint. - Test startup failure and cleanup behavior. -
+diagnostic endpoint (superseded by `/health/ready`). - Test startup
+failure and cleanup behavior. -
 Verify the app uses the intended database URL.
 
 Deliverables: - `infrastructure/database/engine.py`. -
@@ -1359,11 +1360,11 @@ Transactions. - Optimistic concurrency where needed. - State machines.
 
 **Objective:** Store model binaries outside PostgreSQL.
 
-Tasks: - Add MinIO to local Compose. - Define ArtifactStore port. -
-Implement MinIO/S3 adapter. - Add upload and download flows. - Persist
-artifact URI, checksum, size, and format. - Verify checksum after
+Tasks: - Add SeaweedFS to local Compose. - Define ArtifactStore port. -
+Implement S3-compatible adapter. - Add upload and download flows. -
+Persist artifact URI, checksum, size, and format. - Verify checksum after
 upload/download. - Add size/type constraints. - Test storage adapter
-against local MinIO.
+against local SeaweedFS.
 
 Deliverables: - Object-storage service. - Artifact metadata
 persistence. - Artifact API or upload workflow.
@@ -1371,7 +1372,8 @@ persistence. - Artifact API or upload workflow.
 Acceptance criteria: - Artifact bytes are stored in object storage. -
 PostgreSQL stores only metadata and references. - Artifact retrieval
 works. - Integrity checks detect corrupted content. - Credentials are
-not hardcoded.
+not hardcoded. - A model version cannot reference an unregistered
+artifact URI.
 
 Concepts to learn: - Object storage. - S3-compatible APIs. - Presigned
 URLs (if selected). - Checksums. - Storage abstraction. - Upload
@@ -1403,7 +1405,10 @@ execution strategies. - Inference contracts.
 
 Security note: Never deserialize untrusted pickle/joblib artifacts or
 execute arbitrary model code from an untrusted source. Treat artifacts
-as executable-risk inputs and define a trusted-artifact policy.
+as executable-risk inputs and define a trusted-artifact policy. A
+development-only auto-trust mode may exist outside production; production
+must use an explicit allowlist or approval workflow and reject auto-trust
+at startup.
 
 ## Milestone 10 --- Structured logging and error handling
 
@@ -1431,10 +1436,10 @@ Correlation IDs. - Error taxonomy. - Exception translation.
 boundaries.
 
 Tasks: - Configure service resource attributes. - Instrument FastAPI. -
-Instrument SQLAlchemy. - Configure trace exporter. - Run a local
-collector/Tempo path. - Add custom spans for model lookup, artifact
-retrieval, and inference. - Correlate traces with logs. - Verify trace
-context propagation.
+Instrument SQLAlchemy. - Configure trace exporter. - Run a local OTLP
+backend (Jaeger locally; Collector/Tempo in production). - Add custom
+spans for model lookup, artifact retrieval, and inference. - Correlate
+traces with logs. - Verify trace context propagation.
 
 Deliverables: - Distributed trace pipeline. - Trace examples. -
 Instrumentation configuration.
@@ -1764,7 +1769,7 @@ implementation discussion. It must be updated as work progresses.
 -   Quality tools: Ruff and mypy.
 -   Development and test databases: `atlas_dev` and `atlas_test` on one
     local PostgreSQL server.
--   Artifact binaries: future MinIO/S3 object storage.
+-   Artifact binaries: SeaweedFS/S3-compatible object storage.
 -   Observability: future OpenTelemetry, Prometheus, Grafana, and Tempo.
 -   Microservices: explicitly deferred until justified.
 
@@ -1785,7 +1790,7 @@ agent must inspect the repository to determine what is actually present:
 -   SQLAlchemy async engine factory.
 -   Async session factory and request dependency.
 -   Lifespan-based engine creation and disposal.
--   Database health endpoint design.
+-   Readiness health endpoint design (database + S3).
 
 ## 16.3 Immediate configuration baseline
 
@@ -1823,7 +1828,7 @@ credentials. Verify the actual container and database state first.
 5.  Ensure `atlas_test` exists.
 6.  Verify SQLAlchemy engine/session configuration.
 7.  Integrate engine creation and disposal into lifespan.
-8.  Implement and test the database health endpoint.
+8.  Implement and test the readiness health endpoint (database + S3).
 9.  Add a test that proves the application is using the test database.
 10. Proceed to ORM Base and Alembic.
 

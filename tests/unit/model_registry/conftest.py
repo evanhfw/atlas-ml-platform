@@ -2,6 +2,8 @@ from uuid import UUID
 
 import pytest
 
+from atlas_ml_platform.modules.artifacts.application.ports import ArtifactRepository
+from atlas_ml_platform.modules.artifacts.domain import Artifact
 from atlas_ml_platform.modules.model_registry.application.ports import (
     ModelDeploymentRepository,
     ModelRepository,
@@ -97,6 +99,23 @@ class FakeModelDeploymentRepository:
         self._active[model_id] = version_id
 
 
+class FakeArtifactRepository:
+    def __init__(self) -> None:
+        self._artifacts: dict[UUID, Artifact] = {}
+
+    async def add(self, artifact: Artifact) -> None:
+        self._artifacts[artifact.id] = artifact
+
+    async def get(self, artifact_id: UUID) -> Artifact | None:
+        return self._artifacts.get(artifact_id)
+
+    async def get_by_uri(self, uri: str) -> Artifact | None:
+        return next(
+            (artifact for artifact in self._artifacts.values() if artifact.uri == uri),
+            None,
+        )
+
+
 class FakeUnitOfWork:
     def __init__(self) -> None:
         self._models: FakeModelRepository = FakeModelRepository()
@@ -104,6 +123,7 @@ class FakeUnitOfWork:
         self._deployments: FakeModelDeploymentRepository = (
             FakeModelDeploymentRepository()
         )
+        self._artifacts: FakeArtifactRepository = FakeArtifactRepository()
         self.committed: bool = False
         self.rolled_back: bool = False
 
@@ -118,6 +138,10 @@ class FakeUnitOfWork:
     @property
     def deployments(self) -> ModelDeploymentRepository:
         return self._deployments
+
+    @property
+    def artifacts(self) -> ArtifactRepository:
+        return self._artifacts
 
     async def commit(self) -> None:
         self.committed = True

@@ -10,9 +10,19 @@ requires-python = ">=3.12"
 dependencies = [
     "alembic>=1.20.1",
     "asyncpg>=0.32.0",
+    "boto3>=1.44.10",
     "fastapi>=0.165.0",
+    "joblib>=1.6.0",
+    "opentelemetry-api>=1.45.2",
+    "opentelemetry-exporter-otlp-proto-http>=1.45.2",
+    "opentelemetry-instrumentation-fastapi>=0.66b2",
+    "opentelemetry-instrumentation-sqlalchemy>=0.66b2",
+    "opentelemetry-sdk>=1.45.2",
+    "prometheus-client>=0.26.0",
     "pydantic-settings>=2.16.3",
-    "sqlalchemy[asyncio]>=2.1.9",
+    "python-multipart>=0.0.34",
+    "scikit-learn>=1.9.1",
+    "sqlalchemy[asyncio]>=2.0.44,<2.1",
     "uvicorn[standard]>=0.54.0",
 ]
 
@@ -26,7 +36,9 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "httpx>=0.28.1",
+    "locust>=2.47.0",
     "mypy>=2.4.1",
+    "psutil>=7.2.2",
     "pytest>=9.2.0",
     "pytest-asyncio>=1.5.0",
     "ruff>=0.17.6",
