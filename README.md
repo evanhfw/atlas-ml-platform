@@ -153,7 +153,12 @@ src/atlas_ml_platform/
 ├── api/                 # HTTP routes and dependencies
 ├── core/                # application factory and lifespan
 ├── infrastructure/
-│   └── database/        # engine, sessions, ORM base/models
+│   └── database/        # engine, sessions, ORM base
+├── modules/
+│   └── model_registry/
+│       ├── domain/      # entity and value objects
+│       ├── application/ # ports and use cases
+│       └── infrastructure/  # ORM model, repository, unit of work
 └── config.py            # typed settings
 
 docker/

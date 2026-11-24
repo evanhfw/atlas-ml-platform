@@ -7,8 +7,8 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from atlas_ml_platform.config import get_settings
-from atlas_ml_platform.infrastructure.database import models  # noqa: F401
 from atlas_ml_platform.infrastructure.database.base import Base
+from atlas_ml_platform.modules.model_registry.infrastructure import models  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
