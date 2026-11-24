@@ -1,57 +1,20 @@
-from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
-import pytest_asyncio
-from sqlalchemy import inspect, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from atlas_ml_platform.infrastructure.database.engine import create_database_engine
-from atlas_ml_platform.infrastructure.database.session import create_session_factory
 from atlas_ml_platform.modules.model_registry.application.dto import CreateModelCommand
 from atlas_ml_platform.modules.model_registry.application.errors import (
     ModelNameAlreadyExists,
 )
-from atlas_ml_platform.modules.model_registry.application.use_cases import CreateModel
+from atlas_ml_platform.modules.model_registry.application.model_use_cases import (
+    CreateModel,
+)
 from atlas_ml_platform.modules.model_registry.domain import Model, ModelName
 from atlas_ml_platform.modules.model_registry.infrastructure import (
     SQLAlchemyUnitOfWork,
 )
-
-
-@pytest_asyncio.fixture
-async def session_factory(
-    test_database_url: str,
-) -> AsyncIterator[async_sessionmaker[AsyncSession]]:
-    engine = create_database_engine(test_database_url)
-    try:
-        async with engine.connect() as connection:
-            has_models = await connection.run_sync(
-                lambda sync_connection: inspect(sync_connection).has_table("models")
-            )
-        if not has_models:
-            pytest.fail(
-                "atlas_test is not migrated; run alembic upgrade head against it"
-            )
-        yield create_session_factory(engine)
-    finally:
-        await engine.dispose()
-
-
-@pytest_asyncio.fixture(autouse=True)
-async def clean_models(
-    session_factory: async_sessionmaker[AsyncSession],
-) -> AsyncIterator[None]:
-    async with session_factory() as session:
-        _ = await session.execute(text("TRUNCATE TABLE models"))
-        await session.commit()
-
-    yield
-
-    async with session_factory() as session:
-        _ = await session.execute(text("TRUNCATE TABLE models"))
-        await session.commit()
 
 
 async def test_repository_round_trip(

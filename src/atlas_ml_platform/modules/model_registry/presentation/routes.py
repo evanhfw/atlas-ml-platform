@@ -8,7 +8,7 @@ from atlas_ml_platform.modules.model_registry.application.dto import (
     CreateModelCommand,
     ListModelsQuery,
 )
-from atlas_ml_platform.modules.model_registry.application.use_cases import (
+from atlas_ml_platform.modules.model_registry.application.model_use_cases import (
     CreateModel,
     GetModel,
     ListModels,
@@ -18,8 +18,13 @@ from atlas_ml_platform.modules.model_registry.presentation.schemas import (
     ModelList,
     ModelRead,
 )
+from atlas_ml_platform.modules.model_registry.presentation.version_routes import (
+    router as version_router,
+)
 
 router = APIRouter(prefix="/models", tags=["models"])
+
+router.include_router(version_router)
 
 
 @router.post("", response_model=ModelRead, status_code=status.HTTP_201_CREATED)

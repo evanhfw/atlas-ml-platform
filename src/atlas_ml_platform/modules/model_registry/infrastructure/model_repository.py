@@ -10,7 +10,7 @@ from atlas_ml_platform.modules.model_registry.application.errors import (
 )
 from atlas_ml_platform.modules.model_registry.application.ports import ModelRepository
 from atlas_ml_platform.modules.model_registry.domain import Model, ModelName
-from atlas_ml_platform.modules.model_registry.infrastructure.models import ModelRecord
+from atlas_ml_platform.modules.model_registry.infrastructure.records import ModelRecord
 
 
 class SQLAlchemyModelRepository(ModelRepository):
