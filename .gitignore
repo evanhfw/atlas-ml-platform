@@ -19,3 +19,4 @@ example_model.joblib
 # Load-test artifacts
 loadtest/results/
 loadtest/state.json
+backups/

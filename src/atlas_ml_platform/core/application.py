@@ -23,12 +23,16 @@ def create_app(
 
     configure_logging(settings)
 
+    docs_url = "/docs" if settings.DOCS_ENABLED else None
     app = FastAPI(
         title=settings.APP_NAME,
         description="Production-grade ML Model Serving Platform",
         version="0.1.0",
         debug=settings.DEBUG,
         lifespan=lifespan,
+        docs_url=docs_url,
+        redoc_url="/redoc" if settings.DOCS_ENABLED else None,
+        openapi_url="/openapi.json" if settings.DOCS_ENABLED else None,
     )
 
     app.state.settings = settings

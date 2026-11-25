@@ -1,3 +1,4 @@
+import secrets
 from functools import lru_cache
 from typing import Literal, Self
 
@@ -17,9 +18,17 @@ class Settings(BaseSettings):
     APP_ENV: Literal["development", "testing", "production"] = "development"
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
+    DOCS_ENABLED: bool = True
 
     DATABASE_URL: str
     DATABASE_ECHO: bool = False
+
+    # API clients present X-API-Key. Read keys may call GET endpoints and
+    # submit predictions; write keys may additionally mutate registry state.
+    # Authentication is disabled only for local development and tests.
+    AUTH_ENABLED: bool = False
+    API_KEY_READ: str = ""
+    API_KEY_WRITE: str = ""
 
     DB_POOL_SIZE: int = Field(default=5, gt=0)
     DB_MAX_OVERFLOW: int = Field(default=10, ge=0)
@@ -88,9 +97,25 @@ class Settings(BaseSettings):
         )
 
     @model_validator(mode="after")
-    def _validate_artifact_trust_policy(self) -> Self:
-        if self.APP_ENV == "production" and self.ARTIFACT_TRUST_POLICY == "auto":
-            raise ValueError("ARTIFACT_TRUST_POLICY=auto is not allowed in production")
+    def _validate_security_posture(self) -> Self:
+        if self.AUTH_ENABLED:
+            if len(self.API_KEY_READ) < 32 or len(self.API_KEY_WRITE) < 32:
+                raise ValueError(
+                    "AUTH_ENABLED requires API_KEY_READ and API_KEY_WRITE "
+                    "with at least 32 characters"
+                )
+            if secrets.compare_digest(self.API_KEY_READ, self.API_KEY_WRITE):
+                raise ValueError("API_KEY_READ and API_KEY_WRITE must differ")
+
+        if self.APP_ENV == "production":
+            if not self.AUTH_ENABLED:
+                raise ValueError("AUTH_ENABLED must be true in production")
+            if self.DEBUG:
+                raise ValueError("DEBUG must be false in production")
+            if self.ARTIFACT_TRUST_POLICY == "auto":
+                raise ValueError(
+                    "ARTIFACT_TRUST_POLICY=auto is not allowed in production"
+                )
         return self
 
 

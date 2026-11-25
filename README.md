@@ -321,6 +321,24 @@ uv run mypy src
 uv run pytest
 ```
 
+## Production deployment
+
+The production-like stack is the `app` Compose profile: a multi-stage non-root
+image, a one-shot Alembic migration job, API-key authorization, read-only
+container hardening, resource limits, TLS-at-the-proxy guidance, backup/restore
+scripts, rollback procedure, and failure-mode checks.
+
+```bash
+API_KEY_READ="$(openssl rand -hex 32)" \
+API_KEY_WRITE="$(openssl rand -hex 32)" \
+docker compose --profile app up -d --build
+```
+
+Read [`docs/deployment.md`](docs/deployment.md) before using this beyond local
+development. It covers required secrets, health/readiness, TLS, controlled
+migrations, backup/restore drills, rollback, and secret handling. The app
+requires `X-API-Key`; health endpoints and `/metrics` remain unauthenticated.
+
 ## Destructive operations
 
 ```bash

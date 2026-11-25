@@ -6,6 +6,8 @@ from atlas_ml_platform.config import Settings
 TEST_DATABASE_URL = (
     "postgresql+asyncpg://atlas:atlas_dev_password@localhost:5432/atlas_test"
 )
+READ_API_KEY = "a" * 32
+WRITE_API_KEY = "b" * 32
 
 
 def _settings(**overrides: object) -> Settings:
@@ -14,6 +16,19 @@ def _settings(**overrides: object) -> Settings:
         DATABASE_URL=TEST_DATABASE_URL,
         **overrides,
     )
+
+
+def _production(**overrides: object) -> Settings:
+    values: dict[str, object] = {
+        "APP_ENV": "production",
+        "DEBUG": False,
+        "ARTIFACT_TRUST_POLICY": "allowlist",
+        "AUTH_ENABLED": True,
+        "API_KEY_READ": READ_API_KEY,
+        "API_KEY_WRITE": WRITE_API_KEY,
+    }
+    values.update(overrides)
+    return _settings(**values)
 
 
 @pytest.mark.parametrize("value", ["debug", "WaRnInG"])
@@ -36,13 +51,46 @@ def test_auto_trust_policy_is_accepted_outside_production(app_env: str) -> None:
 
 def test_production_rejects_auto_trust_policy() -> None:
     with pytest.raises(ValidationError):
-        _ = _settings(APP_ENV="production", ARTIFACT_TRUST_POLICY="auto")
+        _ = _production(ARTIFACT_TRUST_POLICY="auto")
 
 
 def test_production_accepts_allowlist_trust_policy() -> None:
-    settings = _settings(APP_ENV="production", ARTIFACT_TRUST_POLICY="allowlist")
+    settings = _production()
 
     assert settings.ARTIFACT_TRUST_POLICY == "allowlist"
+    assert settings.AUTH_ENABLED is True
+
+
+def test_production_requires_auth_enabled() -> None:
+    with pytest.raises(ValidationError):
+        _ = _production(AUTH_ENABLED=False)
+
+
+def test_production_rejects_debug() -> None:
+    with pytest.raises(ValidationError):
+        _ = _production(DEBUG=True)
+
+
+@pytest.mark.parametrize("field", ["API_KEY_READ", "API_KEY_WRITE"])
+def test_production_rejects_api_keys_shorter_than_32_characters(
+    field: str,
+) -> None:
+    with pytest.raises(ValidationError):
+        _ = _production(**{field: "s" * 31})
+
+
+def test_production_rejects_equal_read_and_write_api_keys() -> None:
+    with pytest.raises(ValidationError):
+        _ = _production(API_KEY_WRITE=READ_API_KEY)
+
+
+def test_auth_enabled_outside_production_still_validates_key_strength() -> None:
+    with pytest.raises(ValidationError):
+        _ = _settings(
+            AUTH_ENABLED=True,
+            API_KEY_READ="short",
+            API_KEY_WRITE=WRITE_API_KEY,
+        )
 
 
 def test_artifact_trust_policy_defaults_to_allowlist() -> None:
